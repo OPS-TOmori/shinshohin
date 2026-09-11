@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>商品マスタ登録 ― プロカラー現行商品カタログ</title>
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- 初回のみ: Apps Script Web AppのURL設定 -->
+  <div id="url-setup" class="gate hidden">
+    <div class="gate-box">
+      <h1>初期設定</h1>
+      <p>GoogleスプレッドシートのApps ScriptウェブアプリURL（.../exec）を入力してください。<br />この端末のブラウザに保存され、次回からは表示されません。</p>
+      <input type="text" id="url-input" placeholder="https://script.google.com/macros/s/.../exec" autocomplete="off" />
+      <button id="url-submit">保存して接続</button>
+      <p id="url-error" class="error hidden">接続できませんでした。URLをご確認ください。</p>
+    </div>
+  </div>
+
+  <!-- 合言葉ゲート -->
+  <div id="gate" class="gate hidden">
+    <div class="gate-box">
+      <h1>商品マスタ登録</h1>
+      <p>社内共有の合言葉を入力してください。</p>
+      <input type="password" id="gate-input" placeholder="合言葉" autocomplete="off" />
+      <button id="gate-submit">入る</button>
+      <p id="gate-error" class="error hidden">合言葉が正しくありません。</p>
+    </div>
+  </div>
+
+  <div id="app" class="hidden">
+    <header class="topbar">
+      <h1>商品マスタ登録 <span class="sub">― 自社取扱商品カタログ（プロカラー現行）</span></h1>
+      <div class="topbar-right">
+        <div class="topbar-summary" id="grand-summary">読み込み中…</div>
+        <button id="btn-settings" class="btn-link" title="接続先URLを変更">接続設定</button>
+      </div>
+    </header>
+
+    <nav class="tabs" id="brand-tabs">
+      <button class="tab active" data-brand="">全ブランド</button>
+      <button class="tab" data-brand="Az">Az</button>
+      <button class="tab" data-brand="Cocoa">Cocoa</button>
+      <button class="tab" data-brand="グランフォト">グランフォト</button>
+      <button class="tab" data-brand="ブライダル">ブライダル</button>
+      <button class="tab" data-brand="アダマス">アダマス</button>
+    </nav>
+
+    <main>
+      <div class="toolbar">
+        <div class="brand-summary" id="brand-summary"></div>
+        <div class="toolbar-actions">
+          <select id="filter-hinshu">
+            <option value="">品種で絞り込み（すべて）</option>
+            <option value="アルバム">アルバム</option>
+            <option value="額(フレーム)">額(フレーム)</option>
+            <option value="台紙">台紙</option>
+            <option value="その他">その他</option>
+          </select>
+          <button id="btn-new" class="btn-primary">＋ 新規登録</button>
+        </div>
+      </div>
+
+      <div id="list-area">
+        <p class="empty-note" id="loading-note">読み込み中…</p>
+      </div>
+    </main>
+  </div>
+
+  <!-- 登録・編集モーダル -->
+  <div id="modal-overlay" class="modal-overlay hidden">
+    <div class="modal">
+      <h2 id="modal-title">商品を登録</h2>
+      <form id="product-form">
+        <input type="hidden" id="f-id" />
+
+        <label>ブランド
+          <select id="f-brand" required>
+            <option value="Az">Az</option>
+            <option value="Cocoa">Cocoa</option>
+            <option value="グランフォト">グランフォト</option>
+            <option value="ブライダル">ブライダル</option>
+            <option value="アダマス">アダマス</option>
+          </select>
+        </label>
+
+        <label>商品名（任意・識別用にお勧めします）
+          <input type="text" id="f-name" placeholder="例: クリスタル30SQ20P" />
+        </label>
+
+        <label>品種
+          <select id="f-hinshu" required>
+            <option value="アルバム">アルバム</option>
+            <option value="額(フレーム)">額(フレーム)</option>
+            <option value="台紙">台紙</option>
+            <option value="その他">その他</option>
+          </select>
+        </label>
+
+        <label>商品画像
+          <input type="file" id="f-image" accept="image/*" />
+          <img id="f-image-preview" class="preview hidden" />
+        </label>
+
+        <label>色（フリー入力）
+          <input type="text" id="f-color" placeholder="例: 白 / ネイビー など" />
+        </label>
+
+        <label id="f-page-wrap" class="conditional hidden">ページ数
+          <input type="number" id="f-page" min="0" step="1" />
+        </label>
+
+        <label id="f-men-wrap" class="conditional hidden">面数
+          <input type="number" id="f-men" min="0" step="1" />
+        </label>
+
+        <label>プロカラー金額（円・税抜)
+          <input type="number" id="f-price" min="0" step="1" required />
+        </label>
+
+        <label>年間受注数
+          <input type="number" id="f-qty" min="0" step="1" required />
+        </label>
+
+        <div class="calc-preview">
+          プロカラー金額 × 年間受注数 = <strong id="f-calc">¥0</strong>
+        </div>
+
+        <label>備考
+          <textarea id="f-note" rows="3"></textarea>
+        </label>
+
+        <div class="modal-actions">
+          <button type="button" id="btn-cancel" class="btn-secondary">キャンセル</button>
+          <button type="submit" id="btn-save" class="btn-primary">保存</button>
+        </div>
+        <p id="form-error" class="error hidden"></p>
+      </form>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

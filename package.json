@@ -1,0 +1,6 @@
+{
+  "name": "shohin-touroku",
+  "version": "2.0.0",
+  "private": true,
+  "description": "自社取扱商品マスタ登録サイト（静的サイト + Google Apps Script + Googleスプレッドシート）"
+}
