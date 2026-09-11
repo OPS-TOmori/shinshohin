@@ -90,10 +90,35 @@ main { padding: 22px 28px 60px; max-width: 1400px; margin: 0 auto; }
 }
 .brand-summary { font-size: 13px; color: var(--text-mute); }
 .brand-summary strong { color: var(--navy); font-size: 15px; }
-.toolbar-actions { display: flex; gap: 10px; align-items: center; }
+.toolbar-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .toolbar-actions select {
   padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px;
 }
+
+.view-toggle { display: flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+.view-btn {
+  border: none; background: #fff; color: var(--text-mute); padding: 8px 14px; font-size: 13px;
+  cursor: pointer; border-right: 1px solid var(--border);
+}
+.view-btn:last-child { border-right: none; }
+.view-btn:hover { background: #f0f0f0; }
+.view-btn.active { background: var(--teal); color: #fff; font-weight: 700; }
+
+.filter-bar {
+  display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+  margin-bottom: 16px; padding: 12px 14px; background: #fff;
+  border: 1px solid var(--border); border-radius: var(--radius);
+}
+.filter-bar select, .filter-bar input[type="text"] {
+  padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px;
+}
+.filter-bar input[type="text"] { min-width: 200px; flex: 1 1 200px; }
+.btn-link-dark {
+  border: 1px solid var(--border); color: var(--text-mute); background: #fff;
+}
+.btn-link-dark:hover { background: #f0f0f0; color: var(--text); }
+.filter-checkbox { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-mute); cursor: pointer; }
+.filter-checkbox input { width: auto; }
 
 .btn-primary {
   background: var(--teal); color: #fff; border: none; padding: 10px 18px;
@@ -142,6 +167,60 @@ main { padding: 22px 28px 60px; max-width: 1400px; margin: 0 auto; }
 }
 .product-card .actions button:hover { background: #f0f0f0; }
 .product-card .actions .danger { color: var(--danger); border-color: #f0c4bd; }
+.product-card .elm-compare { margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--border); display: flex; flex-direction: column; gap: 2px; }
+
+/* ---------- product table (list view) ---------- */
+.table-scroll { overflow-x: auto; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); }
+table.product-table { width: 100%; border-collapse: collapse; font-size: 13px; white-space: nowrap; }
+table.product-table th, table.product-table td {
+  padding: 10px 12px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: middle;
+}
+table.product-table th { background: #f0f3f4; color: var(--navy); font-weight: 700; position: sticky; top: 0; }
+table.product-table tbody tr:hover { background: #f7f9fa; }
+table.product-table .thumb-cell img, table.product-table .thumb-cell .thumb-none {
+  width: 44px; height: 44px; object-fit: cover; border-radius: 6px; background: #eef1f2;
+  display: inline-flex; align-items: center; justify-content: center; color: #b7bec2; font-size: 10px;
+}
+table.product-table .name-cell { white-space: normal; min-width: 160px; }
+table.product-table .note-cell { white-space: normal; min-width: 140px; color: var(--text-mute); }
+table.product-table .num-cell { text-align: right; font-variant-numeric: tabular-nums; }
+table.product-table .annual-cell { text-align: right; font-weight: 700; color: var(--navy); }
+table.product-table .actions-cell { display: flex; gap: 6px; }
+table.product-table .actions-cell button {
+  padding: 5px 10px; font-size: 12px; border-radius: 6px; border: 1px solid var(--border);
+  background: #fff; cursor: pointer;
+}
+table.product-table .actions-cell button:hover { background: #f0f0f0; }
+table.product-table .actions-cell .danger { color: var(--danger); border-color: #f0c4bd; }
+
+/* ---------- page-count line items (album) ---------- */
+.pages-detail { background: #f7f9fa; border: 1px solid var(--border); border-radius: 8px; padding: 12px; }
+.pages-detail-label { font-size: 13px; font-weight: 700; color: var(--navy); margin-bottom: 8px; }
+.page-line-row {
+  background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 8px; margin-bottom: 8px;
+  display: flex; align-items: center; gap: 8px;
+}
+.page-line-row .pl-body { flex: 1; min-width: 0; }
+.page-line-row .pl-inputs {
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px;
+}
+.page-line-row input {
+  font-family: inherit; padding: 8px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; width: 100%;
+}
+.page-line-row .pl-subtotal-line { font-size: 12px; color: var(--text-mute); margin-top: 4px; }
+.page-line-row .pl-remove {
+  border: 1px solid var(--border); background: #fff; color: var(--danger); border-radius: 6px;
+  width: 30px; height: 30px; flex: none; cursor: pointer; font-size: 14px; line-height: 1;
+}
+.page-line-row .pl-remove:hover { background: #fdecea; }
+.btn-add-line { margin-top: 4px; font-size: 12px; padding: 8px 12px; }
+
+/* ---------- エルム比較の集計表示 ---------- */
+.calc-preview-elm div { display: flex; justify-content: space-between; gap: 10px; }
+.calc-preview-elm div + div { margin-top: 4px; }
+.val-save { color: var(--teal); }
+.val-loss { color: var(--danger); }
+.val-muted { color: var(--text-mute); font-weight: 400; }
 
 /* ---------- modal ---------- */
 .modal-overlay {
