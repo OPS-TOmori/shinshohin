@@ -24,6 +24,8 @@
   let currentKeyword = "";
   let currentElmMissingOnly = false;
   let currentView = localStorage.getItem(STORAGE_KEY_VIEW) === "table" ? "table" : "card";
+  // コピー登録時、元商品の画像URLをそのまま引き継ぐために一時的に保持する。
+  let copiedImageUrl = "";
 
   // ---------------- ユーティリティ ----------------
   function yen(n) {
@@ -389,7 +391,7 @@
         <tr>
           <th>画像</th><th>ブランド</th><th>品種</th><th>商品名</th><th>色</th><th>仕様</th>
           <th>単価</th><th>年間受注数</th><th>年間原価</th>
-          <th>エルム単価</th><th>エルム年間原価</th><th>原価差額</th><th>コストダウン率</th>
+          <th>エルム商品名</th><th>エルム単価</th><th>エルム年間原価</th><th>原価差額</th><th>コストダウン率</th>
           <th>備考</th><th>操作</th>
         </tr>
       </thead>
@@ -431,6 +433,7 @@
       <td class="num-cell">${priceLabel}</td>
       <td class="num-cell">${(Number(f["年間受注数"]) || 0).toLocaleString("ja-JP")}件</td>
       <td class="annual-cell">${yen(annual)}</td>
+      <td>${escapeHtml(f["エルム商品名"] || "")}</td>
       <td class="num-cell">${elmPriceCell}</td>
       <td class="num-cell">${elmAnnualCell}</td>
       <td class="num-cell">${diffCell}</td>
@@ -439,6 +442,11 @@
       <td class="actions-cell"></td>
     `;
     const actionsTd = tr.querySelector(".actions-cell");
+    const copyBtn = document.createElement("button");
+    copyBtn.type = "button";
+    copyBtn.title = "この内容をコピーして新規登録";
+    copyBtn.textContent = "コピー";
+    copyBtn.addEventListener("click", () => openModal(rec, { isCopy: true }));
     const editBtn = document.createElement("button");
     editBtn.type = "button";
     editBtn.textContent = "編集";
@@ -448,6 +456,7 @@
     delBtn.className = "danger";
     delBtn.textContent = "削除";
     delBtn.addEventListener("click", () => onDelete(rec));
+    actionsTd.appendChild(copyBtn);
     actionsTd.appendChild(editBtn);
     actionsTd.appendChild(delBtn);
     return tr;
@@ -481,12 +490,15 @@
     const elmQuoted = hasElmQuote(f);
     const elmUnitLabel = detail && detail.length > 1 ? "エルム単価(平均)" : "エルム単価";
     const { diff, pct } = computeElmComparison(annual, elmQuoted ? f["エルム年間原価"] : null);
+    const elmNameRow = f["エルム商品名"]
+      ? `<div class="price-row"><span>エルム商品名</span><span class="val">${escapeHtml(f["エルム商品名"])}</span></div>`
+      : "";
     const elmBlock = elmQuoted
-      ? `<div class="price-row"><span>${elmUnitLabel}</span><span class="val">${yen(f["エルム単価"])}</span></div>
+      ? `${elmNameRow}<div class="price-row"><span>${elmUnitLabel}</span><span class="val">${yen(f["エルム単価"])}</span></div>
          <div class="price-row"><span>エルム年間原価</span><span class="val">${yen(f["エルム年間原価"])}</span></div>
          <div class="price-row"><span>原価差額</span><span class="val ${elmValClass(diff)}">${diffLabel(diff)}</span></div>
          <div class="price-row"><span>コストダウン率</span><span class="val ${elmValClass(diff)}">${pctLabel(pct)}</span></div>`
-      : `<div class="price-row"><span>エルムさんの見積</span><span class="val val-muted">未入力</span></div>`;
+      : `${elmNameRow}<div class="price-row"><span>エルムさんの見積</span><span class="val val-muted">未入力</span></div>`;
 
     card.insertAdjacentHTML(
       "beforeend",
@@ -501,11 +513,13 @@
         ${f["備考"] ? `<div class="note">${escapeHtml(f["備考"])}</div>` : ""}
       </div>
       <div class="actions">
+        <button class="btn-copy" title="この内容をコピーして新規登録">コピー</button>
         <button class="btn-edit">編集</button>
         <button class="btn-delete danger">削除</button>
       </div>`
     );
 
+    card.querySelector(".btn-copy").addEventListener("click", () => openModal(rec, { isCopy: true }));
     card.querySelector(".btn-edit").addEventListener("click", () => openModal(rec));
     card.querySelector(".btn-delete").addEventListener("click", () => onDelete(rec));
 
@@ -652,8 +666,9 @@
         <div class="pl-inputs">
           <input type="text" class="pl-pages" placeholder="${lineLabelWord()}" value="${data && data.pages != null ? data.pages : ""}" />
           <input type="number" class="pl-price" placeholder="プロカラー単価" min="0" step="1" value="${data && data.price != null ? data.price : ""}" />
-          <input type="number" class="pl-elm" placeholder="エルム単価(任意)" min="0" step="1" value="${data && data.elmPrice != null ? data.elmPrice : ""}" />
           <input type="number" class="pl-qty" placeholder="年間受注数" min="0" step="1" value="${data && data.qty != null ? data.qty : ""}" />
+          <input type="number" class="pl-elm" placeholder="エルム単価(任意)" min="0" step="1" value="${data && data.elmPrice != null ? data.elmPrice : ""}" />
+          <input type="text" class="pl-elm-name" placeholder="エルム商品名(任意)" value="${data && data.elmName != null ? escapeHtml(String(data.elmName)) : ""}" />
         </div>
         <div class="pl-subtotal-line"><span class="pl-subtotal"></span></div>
       </div>
@@ -661,6 +676,7 @@
     `;
     const priceInput = row.querySelector(".pl-price");
     const elmInput = row.querySelector(".pl-elm");
+    const elmNameInput = row.querySelector(".pl-elm-name");
     const qtyInput = row.querySelector(".pl-qty");
     const subtotalEl = row.querySelector(".pl-subtotal");
     const updateRowSubtotal = () => {
@@ -669,12 +685,18 @@
       const elmPrice = Number(elmInput.value) || 0;
       const sub = price * qty;
       let text = `プロカラー小計 ${yen(sub)}`;
-      text += elmPrice > 0 ? ` ／ エルム小計 ${yen(elmPrice * qty)}` : ` ／ エルム小計 未入力`;
+      if (elmPrice > 0) {
+        text += ` ／ エルム小計 ${yen(elmPrice * qty)}`;
+        if (elmNameInput.value) text += `（${elmNameInput.value}）`;
+      } else {
+        text += ` ／ エルム小計 未入力`;
+      }
       subtotalEl.textContent = text;
       updateCalcPreview();
     };
     priceInput.addEventListener("input", updateRowSubtotal);
     elmInput.addEventListener("input", updateRowSubtotal);
+    elmNameInput.addEventListener("input", updateRowSubtotal);
     qtyInput.addEventListener("input", updateRowSubtotal);
     row.querySelector(".pl-pages").addEventListener("input", updateCalcPreview);
     row.querySelector(".pl-remove").addEventListener("click", () => {
@@ -706,9 +728,10 @@
           price: Number(row.querySelector(".pl-price").value) || 0,
           qty: Number(row.querySelector(".pl-qty").value) || 0,
           elmPrice: row.querySelector(".pl-elm").value !== "" ? Number(row.querySelector(".pl-elm").value) : "",
+          elmName: row.querySelector(".pl-elm-name").value || "",
         };
       })
-      .filter((line) => line.pages !== "" || line.price > 0 || line.qty > 0 || line.elmPrice !== "");
+      .filter((line) => line.pages !== "" || line.price > 0 || line.qty > 0 || line.elmPrice !== "" || line.elmName !== "");
   }
 
   // プロカラー原価・エルム原価(集計)・差額・コストダウン率を計算して表示する。
@@ -761,18 +784,21 @@
     fImagePreview.src = "";
     formError.classList.add("hidden");
     pagesDetailList.innerHTML = "";
+    copiedImageUrl = "";
     updateConditionalFields();
     updateCalcPreview();
   }
 
-  function openModal(rec) {
+  function openModal(rec, opts) {
+    opts = opts || {};
+    const isCopy = !!opts.isCopy;
     resetForm();
-    document.getElementById("modal-title").textContent = rec ? "商品を編集" : "商品を登録";
+    document.getElementById("modal-title").textContent = rec ? (isCopy ? "商品をコピーして新規登録" : "商品を編集") : "商品を登録";
     if (rec) {
       const f = rec.fields;
-      fId.value = rec.id;
+      fId.value = isCopy ? "" : rec.id;
       fBrand.value = f["ブランド"] || (currentBrand || BRAND_LABELS[0]);
-      fName.value = f["商品名"] || "";
+      fName.value = (f["商品名"] || "") + (isCopy ? " のコピー" : "");
       fHinshu.value = f["品種"] || "アルバム";
       fColor.value = f["色"] || "";
       fLaminate.value = f["ラミネート"] || "";
@@ -796,6 +822,7 @@
             price: f["プロカラー金額"],
             qty: f["年間受注数"],
             elmPrice: f["エルム単価"],
+            elmName: f["エルム商品名"],
           });
         } else {
           addPageLine();
@@ -805,6 +832,7 @@
       if (f["画像URL"]) {
         fImagePreview.src = f["画像URL"];
         fImagePreview.classList.remove("hidden");
+        if (isCopy) copiedImageUrl = f["画像URL"];
       }
       updateConditionalFields();
       updateCalcPreview();
@@ -874,15 +902,18 @@
 
       const payload = { fields };
       const file = fImage.files[0];
+      const id = fId.value;
       if (file) {
         payload.image = {
           base64: await fileToBase64(file),
           filename: file.name,
           contentType: file.type || "image/jpeg",
         };
+      } else if (!id && copiedImageUrl) {
+        // コピー登録で、新しい画像を選び直していない場合は元商品の画像URLをそのまま引き継ぐ。
+        payload.carryImageUrl = copiedImageUrl;
       }
 
-      const id = fId.value;
       if (id) {
         await apiPost({ action: "update", id, ...payload });
       } else {
