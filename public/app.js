@@ -849,8 +849,24 @@
 
   document.getElementById("btn-new").addEventListener("click", () => openModal(null));
   document.getElementById("btn-cancel").addEventListener("click", closeModal);
+
+  // 背景（オーバーレイ自身）をクリックしたときだけ閉じる。
+  // 入力欄をタップした瞬間にスマホの仮想キーボードが出てきてページが
+  // レイアウトし直されると、タップ開始(mousedown)と終了(click)の間で
+  // 座標がずれて、ブラウザ側では「オーバーレイをクリックした」と
+  // 判定されてしまうことがある(=文字入力しようとしただけでポップアップが
+  // 閉じてしまう不具合の原因)。押し始めも確実にオーバーレイ自身だった
+  // 場合のみ閉じるようにして、これを防ぐ。
+  let overlayPressStartedOnSelf = false;
+  modalOverlay.addEventListener("mousedown", (e) => {
+    overlayPressStartedOnSelf = e.target === modalOverlay;
+  });
+  modalOverlay.addEventListener("touchstart", (e) => {
+    overlayPressStartedOnSelf = e.target === modalOverlay;
+  });
   modalOverlay.addEventListener("click", (e) => {
-    if (e.target === modalOverlay) closeModal();
+    if (e.target === modalOverlay && overlayPressStartedOnSelf) closeModal();
+    overlayPressStartedOnSelf = false;
   });
 
   fImage.addEventListener("change", () => {
