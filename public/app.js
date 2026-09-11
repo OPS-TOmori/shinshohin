@@ -20,6 +20,7 @@
   let currentPageFilter = "";
   let currentMenFilter = "";
   let currentSizeFilter = "";
+  let currentLaminateFilter = "";
   let currentKeyword = "";
   let currentElmMissingOnly = false;
   let currentView = localStorage.getItem(STORAGE_KEY_VIEW) === "table" ? "table" : "card";
@@ -281,6 +282,7 @@
         .filter(Boolean);
       if (!sizes.includes(currentSizeFilter)) return false;
     }
+    if (currentLaminateFilter && (f["ラミネート"] || "") !== currentLaminateFilter) return false;
     if (currentElmMissingOnly && hasElmQuote(f)) return false;
     if (currentKeyword) {
       const kw = currentKeyword.toLowerCase();
@@ -306,6 +308,7 @@
     const pages = new Set();
     const mens = new Set();
     const sizes = new Set();
+    const laminates = new Set();
     allRecords.forEach((rec) => {
       const f = rec.fields;
       if (f["色"]) colors.add(f["色"]);
@@ -324,11 +327,13 @@
           .filter(Boolean)
           .forEach((s) => sizes.add(s));
       }
+      if (f["ラミネート"]) laminates.add(f["ラミネート"]);
     });
     fillSelectOptions(document.getElementById("filter-color"), colors, "色（すべて）", (a, b) => a.localeCompare(b, "ja"));
     fillSelectOptions(document.getElementById("filter-page"), pages, "ページ数（すべて）", (a, b) => Number(a) - Number(b));
     fillSelectOptions(document.getElementById("filter-men"), mens, "面数（すべて）", (a, b) => Number(a) - Number(b));
     fillSelectOptions(document.getElementById("filter-size"), sizes, "サイズ（すべて）", (a, b) => a.localeCompare(b, "ja"));
+    fillSelectOptions(document.getElementById("filter-laminate"), laminates, "ラミネート（すべて）", (a, b) => a.localeCompare(b, "ja"));
   }
 
   function specLabel(f) {
@@ -336,6 +341,7 @@
     if (f["品種"] === "アルバム" && f["ページ数"] !== "" && f["ページ数"] != null) parts.push(`${f["ページ数"]}ページ`);
     if (f["品種"] === "台紙" && f["面数"] !== "" && f["面数"] != null) parts.push(`${f["面数"]}面`);
     if (f["サイズ"]) parts.push(`サイズ: ${f["サイズ"]}`);
+    if (f["ラミネート"]) parts.push(`ラミネート: ${f["ラミネート"]}`);
     return parts.join(" / ");
   }
 
@@ -541,6 +547,11 @@
     render();
   });
 
+  document.getElementById("filter-laminate").addEventListener("change", (e) => {
+    currentLaminateFilter = e.target.value;
+    render();
+  });
+
   document.getElementById("filter-keyword").addEventListener("input", (e) => {
     currentKeyword = e.target.value.trim();
     render();
@@ -557,6 +568,7 @@
     currentPageFilter = "";
     currentMenFilter = "";
     currentSizeFilter = "";
+    currentLaminateFilter = "";
     currentKeyword = "";
     currentElmMissingOnly = false;
     document.getElementById("filter-hinshu").value = "";
@@ -564,6 +576,7 @@
     document.getElementById("filter-page").value = "";
     document.getElementById("filter-men").value = "";
     document.getElementById("filter-size").value = "";
+    document.getElementById("filter-laminate").value = "";
     document.getElementById("filter-keyword").value = "";
     document.getElementById("filter-elm-missing").checked = false;
     render();
@@ -589,6 +602,8 @@
   const fImage = document.getElementById("f-image");
   const fImagePreview = document.getElementById("f-image-preview");
   const fColor = document.getElementById("f-color");
+  const fLaminateWrap = document.getElementById("f-laminate-wrap");
+  const fLaminate = document.getElementById("f-laminate");
   const fMenWrap = document.getElementById("f-men-wrap");
   const fMen = document.getElementById("f-men");
   const fPagesDetailWrap = document.getElementById("f-pages-detail-wrap");
@@ -620,6 +635,7 @@
   function updateConditionalFields() {
     const h = fHinshu.value;
     fMenWrap.classList.toggle("hidden", h !== "台紙");
+    fLaminateWrap.classList.toggle("hidden", h !== "アルバム");
     if (pagesDetailList.children.length === 0) {
       addPageLine();
     }
@@ -759,6 +775,7 @@
       fName.value = f["商品名"] || "";
       fHinshu.value = f["品種"] || "アルバム";
       fColor.value = f["色"] || "";
+      fLaminate.value = f["ラミネート"] || "";
       fMen.value = f["面数"] != null && f["面数"] !== "" ? f["面数"] : "";
       fNote.value = f["備考"] || "";
 
@@ -838,6 +855,7 @@
       fields["面数"] = hinshu === "台紙" && fMen.value !== "" ? Number(fMen.value) : "";
 
       const isAlbum = hinshu === "アルバム";
+      fields["ラミネート"] = isAlbum ? fLaminate.value || "" : "";
       const lines = collectPageLines();
       if (lines.length === 0) {
         throw new Error(`${lineLabelWord()}の明細を1件以上入力してください。`);

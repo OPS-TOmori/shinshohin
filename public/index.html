@@ -71,6 +71,9 @@
         <select id="filter-color">
           <option value="">色（すべて）</option>
         </select>
+        <select id="filter-laminate">
+          <option value="">ラミネート（すべて）</option>
+        </select>
         <select id="filter-page">
           <option value="">ページ数（すべて）</option>
         </select>
@@ -129,8 +132,12 @@
           <img id="f-image-preview" class="preview hidden" />
         </label>
 
-        <label>色（フリー入力）
+        <label>色（フリー入力・任意）
           <input type="text" id="f-color" placeholder="例: 白 / ネイビー など" />
+        </label>
+
+        <label id="f-laminate-wrap" class="conditional hidden">ラミネートの種類（フリー入力・任意）
+          <input type="text" id="f-laminate" placeholder="例: グロス / マット / エンボス など" />
         </label>
 
         <label id="f-men-wrap" class="conditional hidden">面数
