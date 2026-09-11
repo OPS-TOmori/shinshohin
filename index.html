@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>商品マスタ登録 ― プロカラー現行商品カタログ</title>
+<link rel="stylesheet" href="styles.css?v=2" />
+</head>
+<body>
+
+  <!-- 初回のみ: Apps Script Web AppのURL設定 -->
+  <div id="url-setup" class="gate hidden">
+    <div class="gate-box">
+      <h1>初期設定</h1>
+      <p>GoogleスプレッドシートのApps ScriptウェブアプリURL（.../exec）を入力してください。<br />この端末のブラウザに保存され、次回からは表示されません。</p>
+      <input type="text" id="url-input" placeholder="https://script.google.com/macros/s/.../exec" autocomplete="off" />
+      <button id="url-submit">保存して接続</button>
+      <p id="url-error" class="error hidden">接続できませんでした。URLをご確認ください。</p>
+    </div>
+  </div>
+
+  <!-- 合言葉ゲート -->
+  <div id="gate" class="gate hidden">
+    <div class="gate-box">
+      <h1>商品マスタ登録</h1>
+      <p>社内共有の合言葉を入力してください。</p>
+      <input type="password" id="gate-input" placeholder="合言葉" autocomplete="off" />
+      <button id="gate-submit">入る</button>
+      <p id="gate-error" class="error hidden">合言葉が正しくありません。</p>
+    </div>
+  </div>
+
+  <div id="app" class="hidden">
+    <header class="topbar">
+      <h1>商品マスタ登録 <span class="sub">― 自社取扱商品カタログ（プロカラー現行）</span></h1>
+      <div class="topbar-right">
+        <div class="topbar-summary" id="grand-summary">読み込み中…</div>
+        <button id="btn-settings" class="btn-link" title="接続先URLを変更">接続設定</button>
+      </div>
+    </header>
+
+    <nav class="tabs" id="brand-tabs">
+      <button class="tab active" data-brand="">全ブランド</button>
+      <button class="tab" data-brand="Az">Az</button>
+      <button class="tab" data-brand="Cocoa">Cocoa</button>
+      <button class="tab" data-brand="グランフォト">グランフォト</button>
+      <button class="tab" data-brand="ブライダル">ブライダル</button>
+      <button class="tab" data-brand="アダマス">アダマス</button>
+    </nav>
+
+    <main>
+      <div class="toolbar">
+        <div class="brand-summary" id="brand-summary"></div>
+        <div class="toolbar-actions">
+          <div class="view-toggle" id="view-toggle">
+            <button type="button" class="view-btn active" data-view="card">▦ カード表示</button>
+            <button type="button" class="view-btn" data-view="table">☰ リスト表示</button>
+          </div>
+          <button id="btn-new" class="btn-primary">＋ 新規登録</button>
+        </div>
+      </div>
+
+      <div class="filter-bar">
+        <select id="filter-hinshu">
+          <option value="">品種（すべて）</option>
+          <option value="アルバム">アルバム</option>
+          <option value="額(フレーム)">額(フレーム)</option>
+          <option value="台紙">台紙</option>
+          <option value="その他">その他</option>
+        </select>
+        <select id="filter-color">
+          <option value="">色（すべて）</option>
+        </select>
+        <select id="filter-laminate">
+          <option value="">ラミネート（すべて）</option>
+        </select>
+        <select id="filter-page">
+          <option value="">ページ数（すべて）</option>
+        </select>
+        <select id="filter-men">
+          <option value="">面数（すべて）</option>
+        </select>
+        <select id="filter-size">
+          <option value="">サイズ（すべて）</option>
+        </select>
+        <input type="text" id="filter-keyword" placeholder="商品名・備考で検索" />
+        <label class="filter-checkbox">
+          <input type="checkbox" id="filter-elm-missing" />
+          エルム見積 未入力のみ
+        </label>
+        <button type="button" id="btn-filter-clear" class="btn-link btn-link-dark">絞り込みをクリア</button>
+      </div>
+
+      <div id="list-area">
+        <p class="empty-note" id="loading-note">読み込み中…</p>
+      </div>
+    </main>
+  </div>
+
+  <!-- 登録・編集モーダル -->
+  <div id="modal-overlay" class="modal-overlay hidden">
+    <div class="modal">
+      <h2 id="modal-title">商品を登録</h2>
+      <form id="product-form">
+        <input type="hidden" id="f-id" />
+
+        <label>ブランド
+          <select id="f-brand" required>
+            <option value="Az">Az</option>
+            <option value="Cocoa">Cocoa</option>
+            <option value="グランフォト">グランフォト</option>
+            <option value="ブライダル">ブライダル</option>
+            <option value="アダマス">アダマス</option>
+          </select>
+        </label>
+
+        <label>商品名（任意・識別用にお勧めします）
+          <input type="text" id="f-name" placeholder="例: クリスタル30SQ20P" />
+        </label>
+
+        <label>品種
+          <select id="f-hinshu" required>
+            <option value="アルバム">アルバム</option>
+            <option value="額(フレーム)">額(フレーム)</option>
+            <option value="台紙">台紙</option>
+            <option value="その他">その他</option>
+          </select>
+        </label>
+
+        <label>商品画像
+          <input type="file" id="f-image" accept="image/*" />
+          <img id="f-image-preview" class="preview hidden" />
+        </label>
+
+        <label>色（フリー入力・任意）
+          <input type="text" id="f-color" placeholder="例: 白 / ネイビー など" />
+        </label>
+
+        <label id="f-laminate-wrap" class="conditional hidden">ラミネートの種類（フリー入力・任意）
+          <input type="text" id="f-laminate" placeholder="例: グロス / マット / エンボス など" />
+        </label>
+
+        <label id="f-men-wrap" class="conditional hidden">面数
+          <input type="number" id="f-men" min="0" step="1" />
+        </label>
+
+        <div id="f-pages-detail-wrap" class="pages-detail">
+          <div class="pages-detail-label" id="pages-detail-label-text">ページ数ごとの単価・年間受注数・エルム見積（複数登録できます）</div>
+          <div id="pages-detail-list"></div>
+          <button type="button" id="btn-add-page-line" class="btn-secondary btn-add-line">＋ 行を追加</button>
+          <div class="calc-preview calc-preview-elm">
+            <div>プロカラー年間原価合計 = <strong id="pages-detail-total">¥0</strong></div>
+            <div>エルム年間原価合計 = <strong id="pages-detail-elm-total">未入力</strong></div>
+            <div>原価差額（削減額） = <strong id="pages-detail-diff">未入力</strong></div>
+            <div>コストダウン率 = <strong id="pages-detail-pct">未入力</strong></div>
+          </div>
+        </div>
+
+        <label>備考
+          <textarea id="f-note" rows="3"></textarea>
+        </label>
+
+        <div class="modal-actions">
+          <button type="button" id="btn-cancel" class="btn-secondary">キャンセル</button>
+          <button type="submit" id="btn-save" class="btn-primary">保存</button>
+        </div>
+        <p id="form-error" class="error hidden"></p>
+      </form>
+    </div>
+  </div>
+
+  <script src="app.js?v=2"></script>
+</body>
+</html>
