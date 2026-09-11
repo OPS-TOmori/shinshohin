@@ -137,40 +137,15 @@
           <input type="number" id="f-men" min="0" step="1" />
         </label>
 
-        <label id="f-size-wrap" class="conditional hidden">サイズ（フリー入力）
-          <input type="text" id="f-size" placeholder="例: 2L判 / A4 / 六切 など" />
-        </label>
-
-        <div id="f-pages-detail-wrap" class="conditional hidden pages-detail">
-          <div class="pages-detail-label">ページ数ごとの単価・年間受注数・エルム見積（複数登録できます）</div>
+        <div id="f-pages-detail-wrap" class="pages-detail">
+          <div class="pages-detail-label" id="pages-detail-label-text">ページ数ごとの単価・年間受注数・エルム見積（複数登録できます）</div>
           <div id="pages-detail-list"></div>
-          <button type="button" id="btn-add-page-line" class="btn-secondary btn-add-line">＋ ページ数を追加</button>
+          <button type="button" id="btn-add-page-line" class="btn-secondary btn-add-line">＋ 行を追加</button>
           <div class="calc-preview calc-preview-elm">
             <div>プロカラー年間原価合計 = <strong id="pages-detail-total">¥0</strong></div>
             <div>エルム年間原価合計 = <strong id="pages-detail-elm-total">未入力</strong></div>
             <div>原価差額（削減額） = <strong id="pages-detail-diff">未入力</strong></div>
             <div>コストダウン率 = <strong id="pages-detail-pct">未入力</strong></div>
-          </div>
-        </div>
-
-        <div id="f-single-price-wrap">
-          <label>プロカラー金額（円・税抜)
-            <input type="number" id="f-price" min="0" step="1" />
-          </label>
-
-          <label>年間受注数
-            <input type="number" id="f-qty" min="0" step="1" />
-          </label>
-
-          <label>エルムさんの見積単価（円・税抜／未定なら空欄）
-            <input type="number" id="f-elm" min="0" step="1" />
-          </label>
-
-          <div class="calc-preview calc-preview-elm">
-            <div>プロカラー年間原価 = <strong id="f-calc">¥0</strong></div>
-            <div>エルム年間原価 = <strong id="f-elm-calc">未入力</strong></div>
-            <div>原価差額（削減額） = <strong id="f-diff-calc">未入力</strong></div>
-            <div>コストダウン率 = <strong id="f-pct-calc">未入力</strong></div>
           </div>
         </div>
 

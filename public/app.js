@@ -22,7 +22,6 @@
   let currentSizeFilter = "";
   let currentKeyword = "";
   let currentElmMissingOnly = false;
-  const SIZE_HINSHU = ["額(フレーム)", "台紙", "その他"];
   let currentView = localStorage.getItem(STORAGE_KEY_VIEW) === "table" ? "table" : "card";
 
   // ---------------- ユーティリティ ----------------
@@ -275,7 +274,13 @@
       const men = f["面数"] != null && f["面数"] !== "" ? String(f["面数"]) : "";
       if (men !== currentMenFilter) return false;
     }
-    if (currentSizeFilter && (f["サイズ"] || "") !== currentSizeFilter) return false;
+    if (currentSizeFilter) {
+      const sizes = String(f["サイズ"] || "")
+        .split("/")
+        .map((s) => s.trim())
+        .filter(Boolean);
+      if (!sizes.includes(currentSizeFilter)) return false;
+    }
     if (currentElmMissingOnly && hasElmQuote(f)) return false;
     if (currentKeyword) {
       const kw = currentKeyword.toLowerCase();
@@ -312,7 +317,13 @@
           .forEach((p) => pages.add(p));
       }
       if (f["面数"] != null && f["面数"] !== "") mens.add(String(f["面数"]));
-      if (f["サイズ"]) sizes.add(f["サイズ"]);
+      if (f["サイズ"]) {
+        String(f["サイズ"])
+          .split("/")
+          .map((s) => s.trim())
+          .filter(Boolean)
+          .forEach((s) => sizes.add(s));
+      }
     });
     fillSelectOptions(document.getElementById("filter-color"), colors, "色（すべて）", (a, b) => a.localeCompare(b, "ja"));
     fillSelectOptions(document.getElementById("filter-page"), pages, "ページ数（すべて）", (a, b) => Number(a) - Number(b));
@@ -580,17 +591,8 @@
   const fColor = document.getElementById("f-color");
   const fMenWrap = document.getElementById("f-men-wrap");
   const fMen = document.getElementById("f-men");
-  const fSizeWrap = document.getElementById("f-size-wrap");
-  const fSize = document.getElementById("f-size");
-  const fSinglePriceWrap = document.getElementById("f-single-price-wrap");
-  const fPrice = document.getElementById("f-price");
-  const fQty = document.getElementById("f-qty");
-  const fElm = document.getElementById("f-elm");
-  const fCalc = document.getElementById("f-calc");
-  const fElmCalc = document.getElementById("f-elm-calc");
-  const fDiffCalc = document.getElementById("f-diff-calc");
-  const fPctCalc = document.getElementById("f-pct-calc");
   const fPagesDetailWrap = document.getElementById("f-pages-detail-wrap");
+  const pagesDetailLabelText = document.getElementById("pages-detail-label-text");
   const pagesDetailList = document.getElementById("pages-detail-list");
   const btnAddPageLine = document.getElementById("btn-add-page-line");
   const pagesDetailTotal = document.getElementById("pages-detail-total");
@@ -600,27 +602,39 @@
   const fNote = document.getElementById("f-note");
   const formError = document.getElementById("form-error");
 
+  // 品種によって明細行の1列目が「ページ数」(アルバム)か「サイズ」(それ以外)かが変わる。
+  function lineLabelWord() {
+    return fHinshu.value === "アルバム" ? "ページ数" : "サイズ";
+  }
+
+  // 品種切り替え時に、見出し文言・既存行のプレースホルダー・追加ボタンの文言を更新する。
+  function refreshLineLabels() {
+    const word = lineLabelWord();
+    pagesDetailLabelText.textContent = `${word}ごとの単価・年間受注数・エルム見積（複数登録できます）`;
+    btnAddPageLine.textContent = `＋ ${word}を追加`;
+    document.querySelectorAll(".pl-pages").forEach((input) => {
+      input.placeholder = word;
+    });
+  }
+
   function updateConditionalFields() {
     const h = fHinshu.value;
-    const isAlbum = h === "アルバム";
     fMenWrap.classList.toggle("hidden", h !== "台紙");
-    fSizeWrap.classList.toggle("hidden", !SIZE_HINSHU.includes(h));
-    fPagesDetailWrap.classList.toggle("hidden", !isAlbum);
-    fSinglePriceWrap.classList.toggle("hidden", isAlbum);
-    if (isAlbum && pagesDetailList.children.length === 0) {
+    if (pagesDetailList.children.length === 0) {
       addPageLine();
     }
+    refreshLineLabels();
   }
   fHinshu.addEventListener("change", updateConditionalFields);
 
-  // ---------------- ページ数ごとの明細行(アルバム用) ----------------
+  // ---------------- ページ数/サイズごとの明細行 ----------------
   function createPageLineRow(data) {
     const row = document.createElement("div");
     row.className = "page-line-row";
     row.innerHTML = `
       <div class="pl-body">
         <div class="pl-inputs">
-          <input type="number" class="pl-pages" placeholder="ページ数" min="0" step="1" value="${data && data.pages != null ? data.pages : ""}" />
+          <input type="text" class="pl-pages" placeholder="${lineLabelWord()}" value="${data && data.pages != null ? data.pages : ""}" />
           <input type="number" class="pl-price" placeholder="プロカラー単価" min="0" step="1" value="${data && data.price != null ? data.price : ""}" />
           <input type="number" class="pl-elm" placeholder="エルム単価(任意)" min="0" step="1" value="${data && data.elmPrice != null ? data.elmPrice : ""}" />
           <input type="number" class="pl-qty" placeholder="年間受注数" min="0" step="1" value="${data && data.qty != null ? data.qty : ""}" />
@@ -662,13 +676,22 @@
   btnAddPageLine.addEventListener("click", () => addPageLine());
 
   function collectPageLines() {
+    const isAlbum = fHinshu.value === "アルバム";
     return Array.from(pagesDetailList.querySelectorAll(".page-line-row"))
-      .map((row) => ({
-        pages: row.querySelector(".pl-pages").value !== "" ? Number(row.querySelector(".pl-pages").value) : "",
-        price: Number(row.querySelector(".pl-price").value) || 0,
-        qty: Number(row.querySelector(".pl-qty").value) || 0,
-        elmPrice: row.querySelector(".pl-elm").value !== "" ? Number(row.querySelector(".pl-elm").value) : "",
-      }))
+      .map((row) => {
+        const raw = row.querySelector(".pl-pages").value;
+        let label = "";
+        if (raw !== "") {
+          // アルバムは数値として扱う(数値変換できない場合は文字列のまま保持)。
+          label = isAlbum && !isNaN(Number(raw)) ? Number(raw) : raw;
+        }
+        return {
+          pages: label,
+          price: Number(row.querySelector(".pl-price").value) || 0,
+          qty: Number(row.querySelector(".pl-qty").value) || 0,
+          elmPrice: row.querySelector(".pl-elm").value !== "" ? Number(row.querySelector(".pl-elm").value) : "",
+        };
+      })
       .filter((line) => line.pages !== "" || line.price > 0 || line.qty > 0 || line.elmPrice !== "");
   }
 
@@ -696,39 +719,24 @@
   }
 
   function updateCalcPreview() {
-    if (fHinshu.value === "アルバム") {
-      const lines = collectPageLines();
-      const procolorCost = lines.reduce((sum, l) => sum + l.price * l.qty, 0);
-      let elmQty = 0;
-      let elmCost = 0;
-      lines.forEach((l) => {
-        const ep = Number(l.elmPrice) || 0;
-        if (ep > 0) {
-          elmQty += l.qty;
-          elmCost += ep * l.qty;
-        }
-      });
-      renderElmSummary(procolorCost, elmQty, elmCost, {
-        procolor: pagesDetailTotal,
-        elm: pagesDetailElmTotal,
-        diff: pagesDetailDiff,
-        pct: pagesDetailPct,
-      });
-    } else {
-      const qty = Number(fQty.value) || 0;
-      const procolorCost = (Number(fPrice.value) || 0) * qty;
-      const elmPrice = Number(fElm.value) || 0;
-      renderElmSummary(procolorCost, elmPrice > 0 ? qty : 0, elmPrice * qty, {
-        procolor: fCalc,
-        elm: fElmCalc,
-        diff: fDiffCalc,
-        pct: fPctCalc,
-      });
-    }
+    const lines = collectPageLines();
+    const procolorCost = lines.reduce((sum, l) => sum + l.price * l.qty, 0);
+    let elmQty = 0;
+    let elmCost = 0;
+    lines.forEach((l) => {
+      const ep = Number(l.elmPrice) || 0;
+      if (ep > 0) {
+        elmQty += l.qty;
+        elmCost += ep * l.qty;
+      }
+    });
+    renderElmSummary(procolorCost, elmQty, elmCost, {
+      procolor: pagesDetailTotal,
+      elm: pagesDetailElmTotal,
+      diff: pagesDetailDiff,
+      pct: pagesDetailPct,
+    });
   }
-  fPrice.addEventListener("input", updateCalcPreview);
-  fQty.addEventListener("input", updateCalcPreview);
-  fElm.addEventListener("input", updateCalcPreview);
 
   function resetForm() {
     form.reset();
@@ -752,20 +760,26 @@
       fHinshu.value = f["品種"] || "アルバム";
       fColor.value = f["色"] || "";
       fMen.value = f["面数"] != null && f["面数"] !== "" ? f["面数"] : "";
-      fSize.value = f["サイズ"] || "";
-      fPrice.value = f["プロカラー金額"] != null ? f["プロカラー金額"] : "";
-      fQty.value = f["年間受注数"] != null ? f["年間受注数"] : "";
-      fElm.value = f["エルム単価"] != null && f["エルム単価"] !== "" ? f["エルム単価"] : "";
       fNote.value = f["備考"] || "";
 
-      if (fHinshu.value === "アルバム") {
-        pagesDetailList.innerHTML = "";
-        const detail = parseDetailJson(f["ページ別明細"]);
-        if (detail) {
-          detail.forEach((line) => addPageLine(line));
-        } else if (f["ページ数"] !== "" && f["ページ数"] != null) {
-          // 旧形式(ページ数が単一値のみ)のレコードは1行分として読み込む
-          addPageLine({ pages: f["ページ数"], price: f["プロカラー金額"], qty: f["年間受注数"] });
+      pagesDetailList.innerHTML = "";
+      const detail = parseDetailJson(f["ページ別明細"]);
+      if (detail) {
+        detail.forEach((line) => addPageLine(line));
+      } else {
+        // 旧形式(ページ数/サイズが単一値だった頃)のレコードは1行分として読み込む
+        const legacyLabel = fHinshu.value === "アルバム" ? f["ページ数"] : f["サイズ"];
+        const hasLegacyValue =
+          (legacyLabel !== "" && legacyLabel != null) ||
+          (f["プロカラー金額"] != null && Number(f["プロカラー金額"]) !== 0) ||
+          (f["年間受注数"] != null && Number(f["年間受注数"]) !== 0);
+        if (hasLegacyValue) {
+          addPageLine({
+            pages: legacyLabel,
+            price: f["プロカラー金額"],
+            qty: f["年間受注数"],
+            elmPrice: f["エルム単価"],
+          });
         } else {
           addPageLine();
         }
@@ -822,28 +836,23 @@
         "備考": fNote.value || "",
       };
       fields["面数"] = hinshu === "台紙" && fMen.value !== "" ? Number(fMen.value) : "";
-      fields["サイズ"] = SIZE_HINSHU.includes(hinshu) ? fSize.value || "" : "";
 
-      if (hinshu === "アルバム") {
-        const lines = collectPageLines();
-        if (lines.length === 0) {
-          throw new Error("ページ数の明細を1件以上入力してください。");
-        }
-        const totalQty = lines.reduce((sum, l) => sum + l.qty, 0);
-        const totalCost = lines.reduce((sum, l) => sum + l.price * l.qty, 0);
-        fields["ページ別明細"] = JSON.stringify(lines);
-        fields["ページ数"] = lines.map((l) => l.pages).filter((p) => p !== "").join("/");
-        fields["プロカラー金額"] = totalQty > 0 ? Math.round(totalCost / totalQty) : 0;
-        fields["年間受注数"] = totalQty;
-      } else {
-        // アルバム以外は従来通り単一の単価・年間受注数。品種を切り替えた場合に
-        // 古いページ別明細が残らないよう、空文字で明示的にクリアする。
-        fields["ページ別明細"] = "";
-        fields["ページ数"] = "";
-        fields["プロカラー金額"] = Number(fPrice.value) || 0;
-        fields["年間受注数"] = Number(fQty.value) || 0;
-        fields["エルム単価"] = Number(fElm.value) || 0;
+      const isAlbum = hinshu === "アルバム";
+      const lines = collectPageLines();
+      if (lines.length === 0) {
+        throw new Error(`${lineLabelWord()}の明細を1件以上入力してください。`);
       }
+      const totalQty = lines.reduce((sum, l) => sum + l.qty, 0);
+      const totalCost = lines.reduce((sum, l) => sum + l.price * l.qty, 0);
+      const joinedLabel = lines
+        .map((l) => l.pages)
+        .filter((p) => p !== "")
+        .join("/");
+      fields["ページ別明細"] = JSON.stringify(lines);
+      fields["ページ数"] = isAlbum ? joinedLabel : "";
+      fields["サイズ"] = isAlbum ? "" : joinedLabel;
+      fields["プロカラー金額"] = totalQty > 0 ? Math.round(totalCost / totalQty) : 0;
+      fields["年間受注数"] = totalQty;
 
       const payload = { fields };
       const file = fImage.files[0];
